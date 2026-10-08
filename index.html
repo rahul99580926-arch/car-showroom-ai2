@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Car Showroom AI</title><link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <div class="hero">
+    <div class="badge">CAR SHOWROOM AI</div>
+    <h1>Turn your car PDF into a shareable listing.</h1>
+    <p>Upload a showroom PDF. The system extracts the photos, cleans authorized logos, converts everything to JPG and lets you download all photos together.</p>
+    <form action="/upload" method="post" enctype="multipart/form-data" class="upload-card">
+      <label class="drop">
+        <input type="file" name="pdf" accept=".pdf,application/pdf" required>
+        <span>📄 Choose car PDF</span>
+        <small>Maximum 100 MB</small>
+      </label>
+      <button class="btn primary" type="submit">Process PDF →</button>
+    </form>
+    {% with messages = get_flashed_messages() %}
+      {% for m in messages %}<div class="alert">{{m}}</div>{% endfor %}
+    {% endwith %}
+  </div>
+  <div class="feature-grid">
+    <div>📸 <b>Photo extraction</b><span>PDF images → JPG</span></div>
+    <div>✨ <b>Photo cleanup</b><span>Conservative border cleanup</span></div>
+    <div>🧹 <b>Logo removal</b><span>Batch authorized cleanup</span></div>
+    <div>📦 <b>ZIP download</b><span>All JPGs together</span></div>
+  </div>
+</div>
+</body></html>

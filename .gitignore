@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+showroom.db
+uploads/*
+!uploads/.gitkeep
+.env

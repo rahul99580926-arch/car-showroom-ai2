@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Photos | Car Showroom AI</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="shell">
+<div class="topbar"><a href="/">← New PDF</a><span>{{ images|length }} photos</span></div>
+<h1>Extracted car photos</h1>
+<p class="muted">PDF → JPG complete. Select the authorized old-logo area once; the software will search for it across all photos.</p>
+
+<div class="batch-tools">
+  <label class="filebox">
+    <b>Optional: upload your showroom logo</b>
+    <input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp">
+    <small>If you choose “Replace”, this logo will be added automatically.</small>
+  </label>
+
+  <button class="btn primary wide" onclick="openBatch('remove')">
+    🧹 Remove old logo from all {{ images|length }} photos
+  </button>
+
+  <button class="btn secondary wide" onclick="openBatch('replace')">
+    ✨ Remove old logo + add my logo to all
+  </button>
+
+  <button class="btn secondary wide" onclick="downloadAllJPGs()">
+    ⬇️ Download all JPGs
+  </button>
+
+  <p class="muted small-note">Only remove logos/watermarks you own or are authorized to remove.</p>
+</div>
+
+<div class="photo-grid">
+{% for image in images %}
+<div class="photo-card">
+  <div class="img-wrap"><img src="/image/{{folder}}/{{image}}" alt="Car photo"></div>
+  <div class="card-actions">
+    <a class="btn secondary" href="/download/{{folder}}/{{image}}">Download JPG</a>
+  </div>
+</div>
+{% endfor %}
+</div>
+
+<div class="download-footer"><button class="btn primary wide" onclick="downloadAllJPGs()">⬇️ Download all cleaned JPGs</button></div>
+</div>
+
+<div id="modal" class="modal hidden">
+<div class="modal-box">
+<button class="close" onclick="closeCleanup()">×</button>
+<h2 id="modalTitle">Batch logo cleanup</h2>
+<p class="muted">On the first photo, draw a rectangle around each authorized old logo. The system will automatically search for those logos in the other photos.</p>
+<div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+<div class="selection-actions">
+<button class="btn secondary" onclick="clearSelections()">Clear</button>
+<span id="selectionCount" class="muted">0 areas selected</span>
+</div>
+<button id="applyBtn" class="btn primary wide" onclick="applyCleanup()">Start batch cleanup</button>
+</div></div>
+
+<script src="/static/js/cleanup.js"></script>
+<script>
+let mode="remove";
+
+function openBatch(selectedMode){
+  mode=selectedMode;
+  const logo=document.getElementById("logoFile").files[0];
+
+  if(mode==="replace" && !logo){
+    alert("Replace mode ke liye pehle apna showroom logo select karo.");
+    return;
+  }
+
+  document.getElementById("modalTitle").textContent =
+    mode==="replace"
+      ? "Remove old logo + add my logo to all {{images|length}} photos"
+      : "Remove old logo from all {{images|length}} photos";
+
+  document.getElementById("applyBtn").textContent =
+    mode==="replace" ? "Remove + add my logo to all" : "Remove old logo from all";
+
+  window.startCleanup("/image/{{folder}}/{{images[0]}}");
+  document.getElementById("modal").classList.remove("hidden");
+}
+
+function closeCleanup(){ document.getElementById("modal").classList.add("hidden"); }
+function clearSelections(){ window.clearCleanupSelections(); updateSelectionCount(); }
+function updateSelectionCount(){
+  document.getElementById("selectionCount").textContent =
+    window.getCleanupRects().length+" areas selected";
+}
+setInterval(()=>{
+  const m=document.getElementById("modal");
+  if(!m.classList.contains("hidden")) updateSelectionCount();
+},250);
+
+async function applyCleanup(){
+  const rects=window.getCleanupRects();
+  if(!rects.length){ alert("Pehle logo area select karo."); return; }
+
+  const btn=document.getElementById("applyBtn");
+  btn.disabled=true;
+  btn.textContent="Processing all photos…";
+
+  try{
+    const fd=new FormData();
+    fd.append("regions",JSON.stringify(rects));
+
+    const logo=document.getElementById("logoFile").files[0];
+    if(mode==="replace" && logo) fd.append("logo",logo);
+
+    const res=await fetch("/cleanup-batch/{{folder}}",{method:"POST",body:fd});
+    const data=await res.json();
+
+    if(!res.ok || !data.ok) throw new Error(data.error || "Cleanup failed");
+
+    alert(
+      "Done! "+data.processed+" photos processed.\n"+
+      "Automatic logo matches: "+data.detected+"\n"+
+      (mode==="replace" ? "Your logo was added where the old logo was detected." : "Old logo was removed; no new logo added.")
+    );
+    location.reload();
+  }catch(e){
+    alert(e.message || "Cleanup failed.");
+    btn.disabled=false;
+    btn.textContent="Try again";
+  }
+}
+</script>
+<script>
+async function downloadAllJPGs(){
+  const files = {{ images|tojson }};
+  if(!files.length) return;
+  const btns=document.querySelectorAll('[onclick="downloadAllJPGs()"]');
+  btns.forEach(b=>{b.disabled=true;b.textContent='Downloading JPGs…';});
+  for(const file of files){
+    const a=document.createElement('a');
+    a.href='/download/{{folder}}/'+encodeURIComponent(file);
+    a.download=file;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    await new Promise(r=>setTimeout(r,350));
+  }
+  btns.forEach(b=>{b.disabled=false;b.textContent='⬇️ Download all cleaned JPGs';});
+}
+</script>
+
+</body></html>
